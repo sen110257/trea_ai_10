@@ -11,19 +11,27 @@
 
     <!-- 健康小贴士轮播 -->
     <div class="tips-carousel card">
-      <div class="tip-item" :style="{ transform: `translateX(-${currentTipIndex * 100}%)` }">
-        <div v-for="tip in healthTips" :key="tip.id" class="tip-slide">
-          <span class="tip-icon">{{ tip.icon }}</span>
-          <div class="tip-content">
-            <strong class="tip-title">{{ tip.title }}</strong>
-            <p class="tip-text">{{ tip.content }}</p>
+      <div class="carousel-wrapper">
+        <button class="carousel-btn carousel-prev" @click="prevTip">
+          <span>‹</span>
+        </button>
+        <div class="tip-item" :style="{ transform: `translateX(-${currentTipIndex * 100}%)` }">
+          <div v-for="tip in healthTips" :key="tip.id" class="tip-slide">
+            <span class="tip-icon">{{ tip.icon }}</span>
+            <div class="tip-content">
+              <strong class="tip-title">{{ tip.title }}</strong>
+              <p class="tip-text">{{ tip.content }}</p>
+            </div>
           </div>
         </div>
+        <button class="carousel-btn carousel-next" @click="nextTip">
+          <span>›</span>
+        </button>
       </div>
       <div class="tip-dots">
         <span v-for="(tip, index) in healthTips" :key="tip.id" 
               class="tip-dot" :class="{ active: index === currentTipIndex }"
-              @click="currentTipIndex = index"></span>
+              @click="goToTip(index)"></span>
       </div>
     </div>
 
@@ -204,11 +212,17 @@
             <input type="number" class="input" v-model.number="customFood.carbs" placeholder="20">
           </div>
         </div>
-        <div class="custom-result" v-if="customFood.name && customFood.weight">
+        <div class="custom-result" v-if="customFood.calories > 0 && customFood.weight > 0">
           <div class="result-item">
             <span>总热量：</span>
-            <strong>{{ customTotalCalories }} kcal</strong>
+            <strong class="total-cal-value">{{ customTotalCalories }} kcal</strong>
           </div>
+          <div class="result-detail" v-if="customFood.name">
+            <span>{{ customFood.name }} × {{ customFood.weight }}g = {{ customTotalCalories }} kcal</span>
+          </div>
+        </div>
+        <div class="custom-hint" v-else-if="customFood.name || customFood.weight > 0 || customFood.calories > 0">
+          <span>💡 请输入食物名称、重量和每100g热量，系统将自动计算总热量</span>
         </div>
         <button class="btn btn-primary custom-add-btn" @click="addCustomFood">
           ➕ 添加自定义食物
@@ -497,6 +511,7 @@ const compareCalories = ref(0)
 
 // 食谱
 const selectedRecipe = ref(null)
+const recipes = computed(() => lowCalRecipes)
 
 // 小贴士轮播
 const currentTipIndex = ref(0)
@@ -708,6 +723,19 @@ function confirmClearAll() {
   }
 }
 
+// 轮播图切换方法
+function prevTip() {
+  currentTipIndex.value = (currentTipIndex.value - 1 + healthTips.length) % healthTips.length
+}
+
+function nextTip() {
+  currentTipIndex.value = (currentTipIndex.value + 1) % healthTips.length
+}
+
+function goToTip(index) {
+  currentTipIndex.value = index
+}
+
 // 监听用户资料变化
 watch(userProfile, (newProfile) => {
   userProfileStorage.set(newProfile)
@@ -773,11 +801,60 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
   position: relative;
   overflow: hidden;
+  padding: 12px;
+}
+
+.carousel-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+  min-height: 80px;
+}
+
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--primary-dark);
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.carousel-btn:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.carousel-prev {
+  left: 0;
+}
+
+.carousel-next {
+  right: 0;
+}
+
+.carousel-btn span {
+  line-height: 1;
+  margin-top: -2px;
 }
 
 .tip-item {
   display: flex;
   transition: transform 0.5s ease;
+  width: 100%;
+  padding: 0 40px;
+  box-sizing: border-box;
 }
 
 .tip-slide {
@@ -785,26 +862,34 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  box-sizing: border-box;
 }
 
 .tip-icon {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
+  flex-shrink: 0;
 }
 
 .tip-content {
   flex: 1;
+  min-width: 0;
 }
 
 .tip-title {
   display: block;
   color: var(--text-primary);
   margin-bottom: 4px;
+  font-size: 0.9375rem;
 }
 
 .tip-text {
   font-size: 0.8125rem;
   color: var(--text-secondary);
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .tip-dots {
@@ -812,21 +897,27 @@ onUnmounted(() => {
   justify-content: center;
   gap: 6px;
   margin-top: 12px;
+  padding-top: 4px;
 }
 
 .tip-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--border-color);
+  background: rgba(22, 101, 52, 0.2);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .tip-dot.active {
-  width: 18px;
-  border-radius: 3px;
+  width: 24px;
+  border-radius: 4px;
   background: var(--primary-color);
+}
+
+.tip-dot:hover {
+  background: var(--primary-light);
 }
 
 /* 搜索模块 */
@@ -879,51 +970,76 @@ onUnmounted(() => {
   color: white;
 }
 
-/* 分类导航 */
+/* 分类导航 - 魔方网格布局 */
 .category-list {
-  display: flex;
-  overflow-x: auto;
-  gap: 12px;
-  padding-bottom: 4px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.category-list::-webkit-scrollbar {
-  display: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
 }
 
 .category-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 12px 16px;
-  background: var(--background-color);
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 10px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
   border-radius: 16px;
-  border: none;
+  border: 2px solid transparent;
   cursor: pointer;
-  transition: all 0.2s;
-  min-width: 70px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.category-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.5) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.category-item:hover::before {
+  opacity: 1;
 }
 
 .category-item:hover {
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(74, 222, 128, 0.3);
+}
+
+.category-item:active {
+  transform: translateY(0);
 }
 
 .category-item.active {
   background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-color) 100%);
+  border-color: var(--primary-dark);
+  box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
+}
+
+.category-item.active .category-icon {
+  transform: scale(1.1);
 }
 
 .category-item.active .category-name {
   color: white;
+  font-weight: 600;
 }
 
 .category-icon {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
+  transition: transform 0.3s ease;
 }
 
 .category-name {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -1210,19 +1326,40 @@ onUnmounted(() => {
 }
 
 .custom-result {
-  padding: 12px;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  padding: 16px;
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
   border-radius: 12px;
+  border: 2px solid var(--primary-color);
 }
 
 .result-item {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.result-item strong {
-  color: #92400e;
-  font-size: 1rem;
+.total-cal-value {
+  color: var(--primary-dark);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.result-detail {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(22, 101, 52, 0.2);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.custom-hint {
+  padding: 12px;
+  background: var(--background-color);
+  border-radius: 12px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
 }
 
 .custom-add-btn {
