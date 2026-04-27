@@ -11,12 +11,9 @@
 
     <!-- 健康小贴士轮播 -->
     <div class="tips-carousel card">
-      <div class="carousel-wrapper">
-        <button class="carousel-btn carousel-prev" @click="prevTip">
-          <span>‹</span>
-        </button>
-        <div class="tip-item" :style="{ transform: `translateX(-${currentTipIndex * 100}%)` }">
-          <div v-for="tip in healthTips" :key="tip.id" class="tip-slide">
+      <div class="carousel-container">
+        <div class="tip-track" :style="{ transform: `translateX(-${currentTipIndex * 100}%)` }">
+          <div v-for="tip in healthTips" :key="tip.id" class="tip-slide-item">
             <span class="tip-icon">{{ tip.icon }}</span>
             <div class="tip-content">
               <strong class="tip-title">{{ tip.title }}</strong>
@@ -24,13 +21,16 @@
             </div>
           </div>
         </div>
-        <button class="carousel-btn carousel-next" @click="nextTip">
-          <span>›</span>
+        <button class="carousel-nav-btn carousel-prev-btn" @click="prevTip">
+          <span class="nav-arrow">‹</span>
+        </button>
+        <button class="carousel-nav-btn carousel-next-btn" @click="nextTip">
+          <span class="nav-arrow">›</span>
         </button>
       </div>
-      <div class="tip-dots">
+      <div class="carousel-indicators">
         <span v-for="(tip, index) in healthTips" :key="tip.id" 
-              class="tip-dot" :class="{ active: index === currentTipIndex }"
+              class="indicator-dot" :class="{ active: index === currentTipIndex }"
               @click="goToTip(index)"></span>
       </div>
     </div>
@@ -213,19 +213,44 @@
           </div>
         </div>
         <div class="custom-result" v-if="customFood.calories > 0 && customFood.weight > 0">
-          <div class="result-item">
-            <span>总热量：</span>
-            <strong class="total-cal-value">{{ customTotalCalories }} kcal</strong>
+          <div class="result-header">
+            <span class="result-icon">🔥</span>
+            <span class="result-label">计算结果</span>
           </div>
-          <div class="result-detail" v-if="customFood.name">
-            <span>{{ customFood.name }} × {{ customFood.weight }}g = {{ customTotalCalories }} kcal</span>
+          <div class="result-content">
+            <div class="result-item">
+              <span class="result-name">{{ customFood.name || '未命名' }}</span>
+              <span class="result-weight">{{ customFood.weight }}g</span>
+            </div>
+            <div class="result-total">
+              <span class="total-prefix">总热量</span>
+              <span class="total-cal-value">{{ customTotalCalories }}</span>
+              <span class="total-unit">kcal</span>
+            </div>
+            <div class="result-detail" v-if="customFood.name">
+              <span>计算公式：{{ customFood.name }} ({{ customFood.calories }} kcal/100g) × {{ customFood.weight }}g ÷ 100 = {{ customTotalCalories }} kcal</span>
+            </div>
+          </div>
+          <div class="quick-add-section" v-if="customFood.name">
+            <span class="quick-add-label">快速添加到：</span>
+            <div class="quick-add-buttons">
+              <button v-for="meal in mealTypes" :key="meal.id" 
+                      class="quick-add-btn"
+                      :class="`btn-${meal.color}`"
+                      @click="addCustomFoodToMeal(meal.id)">
+                {{ meal.icon }}
+              </button>
+            </div>
           </div>
         </div>
         <div class="custom-hint" v-else-if="customFood.name || customFood.weight > 0 || customFood.calories > 0">
-          <span>💡 请输入食物名称、重量和每100g热量，系统将自动计算总热量</span>
+          <div class="hint-content">
+            <span class="hint-icon">💡</span>
+            <span class="hint-text">请输入食物名称、重量和每100g热量，系统将自动计算总热量</span>
+          </div>
         </div>
         <button class="btn btn-primary custom-add-btn" @click="addCustomFood">
-          ➕ 添加自定义食物
+          ➕ 保存到食物库
         </button>
       </div>
     </div>
@@ -395,12 +420,41 @@
         <div v-for="recipe in recipes" :key="recipe.id" 
              class="recipe-item"
              @click="showRecipeDetail(recipe)">
-          <div class="recipe-image" :style="{ backgroundImage: `url(${recipe.image})` }"></div>
+          <div class="recipe-image" :style="{ background: recipe.color }">
+            <span class="recipe-icon">{{ recipe.icon }}</span>
+          </div>
           <div class="recipe-info">
             <div class="recipe-name">{{ recipe.name }}</div>
             <div class="recipe-desc">{{ recipe.description }}</div>
             <div class="recipe-cal">
               <span class="tag tag-secondary">{{ recipe.calories }} kcal</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 低卡食材推荐 -->
+    <div class="ingredients-card card">
+      <h3 class="card-title">
+        <span>🥬</span> 低卡减脂食材推荐
+      </h3>
+      
+      <div class="ingredients-list">
+        <div v-for="(cat, catIndex) in lowCalIngredients" :key="catIndex" class="ingredient-category">
+          <div class="category-header">
+            <span class="category-icon">{{ cat.icon }}</span>
+            <span class="category-title">{{ cat.category }}</span>
+          </div>
+          <div class="ingredient-items">
+            <div v-for="(item, itemIndex) in cat.items" :key="itemIndex" class="ingredient-item">
+              <div class="ingredient-info">
+                <div class="ingredient-name">{{ item.name }}</div>
+                <div class="ingredient-reason">{{ item.reason }}</div>
+              </div>
+              <div class="ingredient-cal">
+                <span class="tag tag-primary">{{ item.calories }} kcal</span>
+              </div>
             </div>
           </div>
         </div>
@@ -415,7 +469,9 @@
           <button class="modal-close" @click="closeRecipeDetail">×</button>
         </div>
         
-        <div class="recipe-detail-image" :style="{ backgroundImage: `url(${selectedRecipe.image})` }"></div>
+        <div class="recipe-detail-image" :style="{ background: selectedRecipe.color }">
+          <span class="detail-recipe-icon">{{ selectedRecipe.icon }}</span>
+        </div>
         
         <div class="recipe-detail-info">
           <div class="recipe-cal-badge">
@@ -465,7 +521,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { foodCategories, foods } from './data/foods'
 import { exercises, exerciseTimeOptions } from './data/exercises'
-import { lowCalRecipes } from './data/recipes'
+import { lowCalRecipes, lowCalIngredients } from './data/recipes'
 import { healthTips } from './data/tips'
 import { 
   mealStorage, 
@@ -492,6 +548,9 @@ const customFood = ref({
   protein: 0,
   carbs: 0
 })
+
+// 自定义食物列表（响应式）
+const customFoodList = ref(customFoodStorage.get())
 
 // 餐食记录
 const todayRecords = ref({
@@ -539,9 +598,8 @@ const hotFoods = computed(() => {
 const filteredFoods = computed(() => {
   let result = [...foods]
   
-  // 添加自定义食物
-  const customFoods = customFoodStorage.get()
-  result = [...result, ...customFoods]
+  // 添加自定义食物（使用响应式列表）
+  result = [...result, ...customFoodList.value]
   
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase()
@@ -666,7 +724,7 @@ function addCustomFood() {
     return
   }
   
-  customFoodStorage.add({
+  const newCustomFood = {
     name: customFood.value.name,
     weight: customFood.value.weight,
     calories: customFood.value.calories,
@@ -674,8 +732,26 @@ function addCustomFood() {
     protein: customFood.value.protein || 0,
     carbs: customFood.value.carbs || 0,
     unit: '100g',
-    category: 'custom'
+    category: 'custom',
+    icon: '🍽️',
+    isCustom: true,
+    id: Date.now()
+  }
+  
+  // 保存到存储
+  customFoodStorage.add({
+    name: customFood.value.name,
+    calories: customFood.value.calories,
+    fat: customFood.value.fat || 0,
+    protein: customFood.value.protein || 0,
+    carbs: customFood.value.carbs || 0,
+    unit: '100g',
+    category: 'custom',
+    icon: '🍽️'
   })
+  
+  // 更新响应式列表（重新从存储获取，确保同步）
+  customFoodList.value = customFoodStorage.get()
   
   // 重置表单
   customFood.value = {
@@ -687,7 +763,52 @@ function addCustomFood() {
     carbs: 0
   }
   
-  alert('自定义食物添加成功！')
+  alert(`✅ 添加成功！\n\n食物：${newCustomFood.name}\n重量：${newCustomFood.weight}g\n总热量：${customTotalCalories.value} kcal\n\n可在食物列表中找到并添加到餐食记录。`)
+}
+
+// 快速添加自定义食物到餐食
+function addCustomFoodToMeal(mealType) {
+  if (!customFood.value.name || !customFood.value.weight || !customFood.value.calories) {
+    alert('请先填写食物名称、重量和热量')
+    return
+  }
+  
+  const totalCal = customTotalCalories.value
+  const mealItem = {
+    name: customFood.value.name,
+    weight: customFood.value.weight,
+    calories: customFood.value.calories,
+    totalCalories: totalCal,
+    fat: customFood.value.fat || 0,
+    protein: customFood.value.protein || 0,
+    carbs: customFood.value.carbs || 0,
+    icon: '🍽️',
+    isCustom: true
+  }
+  
+  todayRecords.value = mealStorage.addMealItem(mealType, mealItem)
+  
+  // 重置表单
+  customFood.value = {
+    name: '',
+    weight: 100,
+    calories: 0,
+    fat: 0,
+    protein: 0,
+    carbs: 0
+  }
+  
+  alert(`✅ 已添加到${getMealName(mealType)}！\n\n${mealItem.name} - ${mealItem.totalCalories} kcal`)
+}
+
+function getMealName(mealType) {
+  const names = {
+    breakfast: '早餐',
+    lunch: '午餐',
+    dinner: '晚餐',
+    snack: '加餐'
+  }
+  return names[mealType] || mealType
 }
 
 function getMealCalories(mealType) {
@@ -801,73 +922,81 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
   position: relative;
   overflow: hidden;
-  padding: 12px;
+  padding: 16px;
 }
 
-.carousel-wrapper {
-  display: flex;
-  align-items: center;
+.carousel-container {
   position: relative;
-  min-height: 80px;
+  overflow: hidden;
+  border-radius: 12px;
+  min-height: 70px;
 }
 
-.carousel-btn {
+.tip-track {
+  display: flex;
+  width: 100%;
+  transition: transform 0.5s ease-in-out;
+}
+
+.tip-slide-item {
+  min-width: 100%;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 48px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.carousel-nav-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   color: var(--primary-dark);
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease;
+  line-height: 1;
 }
 
-.carousel-btn:hover {
+.carousel-nav-btn:hover {
   background: var(--primary-color);
   color: white;
+  transform: translateY(-50%) scale(1.1);
 }
 
-.carousel-prev {
-  left: 0;
+.carousel-nav-btn:active {
+  transform: translateY(-50%) scale(0.95);
 }
 
-.carousel-next {
-  right: 0;
+.carousel-prev-btn {
+  left: 4px;
 }
 
-.carousel-btn span {
+.carousel-next-btn {
+  right: 4px;
+}
+
+.nav-arrow {
   line-height: 1;
   margin-top: -2px;
-}
-
-.tip-item {
-  display: flex;
-  transition: transform 0.5s ease;
-  width: 100%;
-  padding: 0 40px;
-  box-sizing: border-box;
-}
-
-.tip-slide {
-  min-width: 100%;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  box-sizing: border-box;
 }
 
 .tip-icon {
   font-size: 1.75rem;
   flex-shrink: 0;
+  line-height: 1;
 }
 
 .tip-content {
@@ -880,6 +1009,7 @@ onUnmounted(() => {
   color: var(--text-primary);
   margin-bottom: 4px;
   font-size: 0.9375rem;
+  font-weight: 600;
 }
 
 .tip-text {
@@ -890,34 +1020,36 @@ onUnmounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  margin: 0;
 }
 
-.tip-dots {
+.carousel-indicators {
   display: flex;
   justify-content: center;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   margin-top: 12px;
   padding-top: 4px;
 }
 
-.tip-dot {
+.indicator-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(22, 101, 52, 0.2);
+  background: rgba(22, 101, 52, 0.25);
   cursor: pointer;
   transition: all 0.3s ease;
   flex-shrink: 0;
 }
 
-.tip-dot.active {
+.indicator-dot:hover {
+  background: rgba(22, 101, 52, 0.5);
+}
+
+.indicator-dot.active {
   width: 24px;
   border-radius: 4px;
   background: var(--primary-color);
-}
-
-.tip-dot:hover {
-  background: var(--primary-light);
 }
 
 /* 搜索模块 */
@@ -1332,34 +1464,188 @@ onUnmounted(() => {
   border: 2px solid var(--primary-color);
 }
 
-.result-item {
-  font-size: 1rem;
-  color: var(--text-primary);
+.result-header {
   display: flex;
   align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(22, 101, 52, 0.2);
+}
+
+.result-icon {
+  font-size: 1.125rem;
+}
+
+.result-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+}
+
+.result-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
+}
+
+.result-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.result-weight {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.6);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.result-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+}
+
+.total-prefix {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
 }
 
 .total-cal-value {
   color: var(--primary-dark);
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: 700;
+  line-height: 1;
+}
+
+.total-unit {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .result-detail {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(22, 101, 52, 0.2);
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.quick-add-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(22, 101, 52, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quick-add-label {
   font-size: 0.8125rem;
   color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.quick-add-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quick-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.quick-add-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.quick-add-btn:active {
+  transform: scale(0.95);
+}
+
+.quick-add-btn.btn-orange {
+  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+}
+
+.quick-add-btn.btn-orange:hover {
+  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+}
+
+.quick-add-btn.btn-blue {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+}
+
+.quick-add-btn.btn-blue:hover {
+  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+}
+
+.quick-add-btn.btn-purple {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+}
+
+.quick-add-btn.btn-purple:hover {
+  background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
+}
+
+.quick-add-btn.btn-pink {
+  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+}
+
+.quick-add-btn.btn-pink:hover {
+  background: linear-gradient(135deg, #fbcfe8 0%, #f9a8d4 100%);
 }
 
 .custom-hint {
   padding: 12px;
   background: var(--background-color);
   border-radius: 12px;
+  border: 1px dashed rgba(34, 197, 94, 0.3);
+}
+
+.hint-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.hint-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.hint-text {
   font-size: 0.8125rem;
   color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 .custom-add-btn {
@@ -1749,8 +2035,16 @@ onUnmounted(() => {
 
 .recipe-image {
   height: 120px;
-  background-size: cover;
-  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.recipe-icon {
+  font-size: 3.5rem;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
 }
 
 .recipe-info {
@@ -1771,6 +2065,82 @@ onUnmounted(() => {
   line-height: 1.4;
 }
 
+/* 低卡食材推荐 */
+.ingredients-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ingredient-category {
+  background: var(--background-color);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(34, 197, 94, 0.1);
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(34, 197, 94, 0.15);
+}
+
+.category-icon {
+  font-size: 1.25rem;
+}
+
+.category-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ingredient-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ingredient-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: white;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.ingredient-item:hover {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  transform: translateX(4px);
+}
+
+.ingredient-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ingredient-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ingredient-reason {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.ingredient-cal {
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
 /* 食谱详情弹窗 */
 .recipe-modal {
   max-height: 85vh;
@@ -1778,10 +2148,18 @@ onUnmounted(() => {
 
 .recipe-detail-image {
   height: 200px;
-  background-size: cover;
-  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 16px;
   margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.detail-recipe-icon {
+  font-size: 5rem;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
 }
 
 .recipe-detail-info {
